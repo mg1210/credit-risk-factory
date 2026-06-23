@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Data (too large for git)
+data/*.csv
+data/*.xlsx
+data/*.parquet
+
+# Outputs
+outputs/
+
+# Streamlit secrets (never commit real keys)
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
