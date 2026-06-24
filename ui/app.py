@@ -57,19 +57,21 @@ if "pipeline_state" not in st.session_state:
     st.session_state.pipeline_state = None
 if "error_msg" not in st.session_state:
     st.session_state.error_msg = None
+if "running" not in st.session_state:
+    st.session_state.running = False
 
-# ── Run pipeline ──────────────────────────────────────────────────────────────
-if run_btn:
+# ── Run pipeline (only on button click, never on rerun) ───────────────────────
+if run_btn and not st.session_state.running:
     if uploaded is None:
         st.sidebar.error("Please upload a CSV first.")
     else:
-        # Write upload to temp file
+        st.session_state.running = True
+        st.session_state.pipeline_state = None
+        st.session_state.error_msg = None
+
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
         tmp.write(uploaded.read())
         tmp.close()
-
-        st.session_state.pipeline_state = None
-        st.session_state.error_msg = None
 
         with st.spinner("Running pipeline… this takes 2–5 minutes. Please wait."):
             try:
@@ -78,7 +80,7 @@ if run_btn:
                     output_dir="outputs",
                     optuna_trials=trials,
                     auto_approve=True,
-                    verbose=False,   # suppress colorama stdout issues
+                    verbose=False,
                 )
                 state = orch.run(
                     dataset_path=tmp.name,
@@ -87,11 +89,12 @@ if run_btn:
                 st.session_state.pipeline_state = state
             except Exception as e:
                 st.session_state.error_msg = traceback.format_exc()
-
-        try:
-            os.unlink(tmp.name)
-        except Exception:
-            pass
+            finally:
+                st.session_state.running = False
+                try:
+                    os.unlink(tmp.name)
+                except Exception:
+                    pass
 
         st.rerun()
 
