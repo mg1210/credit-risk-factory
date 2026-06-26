@@ -99,7 +99,7 @@ def show_results(data, audit_path, report_txt, rpt_path):
     st.caption(f"Run: {run_id}  |  Dataset: {dataset}  |  File: {os.path.basename(audit_path)}")
     st.markdown("---")
 
-    # Phase tracker
+    # ── Phase tracker + expandable details ───────────────────────────────────
     PHASES = [
         ("Data Understanding", "DataUnderstandingAgent"),
         ("DQR",               "DQRAgent"),
@@ -109,7 +109,12 @@ def show_results(data, audit_path, report_txt, rpt_path):
         ("Explainability",    "ExplainabilityAgent"),
         ("Validation",        "ValidationAgent"),
     ]
-    completed = {e["agent"] for e in audit_log if e.get("action") == "completed"}
+    completed   = {e["agent"] for e in audit_log if e.get("action") == "completed"}
+    audit_by_agent = {}
+    for e in audit_log:
+        audit_by_agent.setdefault(e["agent"], []).append(e)
+
+    # Row of status cards
     phase_cols = st.columns(7)
     for col, (label, agent) in zip(phase_cols, PHASES):
         done = agent in completed
@@ -123,6 +128,99 @@ def show_results(data, audit_path, report_txt, rpt_path):
             f'</div>',
             unsafe_allow_html=True,
         )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Expandable detail rows (one expander per phase, collapsed by default)
+    def _detail_row(k, v):
+        st.markdown(f"**{k}:** {v}")
+
+    # Helper: get detail string from audit_log for a specific action
+    def _audit_detail(agent, action):
+        for e in audit_by_agent.get(agent, []):
+            if e.get("action") == action:
+                return e.get("detail", "")
+        return ""
+
+    exp_cols = st.columns(7)
+
+    # 1 — Data Understanding
+    with exp_cols[0].expander("Details", expanded=False):
+        raw = _audit_detail("DataUnderstandingAgent", "data_loaded")   # "192590 rows, 73 cols"
+        if raw:
+            parts = raw.split(",")
+            _detail_row("Rows loaded", parts[0].strip() if parts else "—")
+            _detail_row("Columns",     parts[1].strip() if len(parts) > 1 else "—")
+        tdef = data.get("target_definition", "")
+        dr_match = [p for p in tdef.split(".") if "Default rate" in p]
+        _detail_row("Default rate", dr_match[0].strip() if dr_match else "—")
+        _detail_row("Leakage cols", len(data.get("leakage_columns", [])))
+
+    # 2 — DQR
+    with exp_cols[1].expander("Details", expanded=False):
+        dqr = data.get("dqr_report", {})
+        missing = data.get("missing_summary", {})
+        high_miss = data.get("high_missing_cols", [])
+        _detail_row("High missing (>40%)", len(high_miss) if high_miss else "see warnings")
+        _detail_row("Duplicate rows", dqr.get("duplicate_ids", 0))
+        outliers = data.get("outlier_summary", {})
+        flagged = sum(1 for v in outliers.values()
+                      if isinstance(v, dict) and v.get("iqr_outliers", 0) > 0) if outliers else "—"
+        _detail_row("Outlier cols flagged", flagged)
+        _detail_row("DQR flags raised", len(data.get("dqr_flags", [])))
+
+    # 3 — Feature Engineering
+    with exp_cols[2].expander("Details", expanded=False):
+        raw = _audit_detail("FeatureEngineeringAgent", "feature_engineering_complete")
+        _detail_row("Output", raw if raw else "—")
+        fl = data.get("feature_log", [])
+        _detail_row("Features engineered", len(fl) if fl else "—")
+
+    # 4 — Variable Selection
+    with exp_cols[3].expander("Details", expanded=False):
+        feats = data.get("selected_features", [])
+        _detail_row("Features selected", len(feats))
+        iv_table = data.get("iv_table")
+        if iv_table and isinstance(iv_table, list):
+            top3 = sorted(iv_table, key=lambda r: r.get("iv", 0), reverse=True)[:3]
+            for r in top3:
+                st.markdown(f"- **{r.get('feature','?')}** IV={r.get('iv',0):.4f}")
+        elif feats:
+            for f in feats[:3]:
+                st.markdown(f"- {f}")
+
+    # 5 — Model Development
+    with exp_cols[4].expander("Details", expanded=False):
+        _detail_row("Models trained", len(mm))
+        _detail_row("Champion", champion)
+        _detail_row("Champion AUC", f"{auc:.4f}" if auc else "—")
+        for name, m in mm.items():
+            marker = " ✓" if name == champion else ""
+            st.markdown(f"- **{name}{marker}** AUC={m.get('auc_test','—'):.4f}")
+
+    # 6 — Explainability
+    with exp_cols[5].expander("Details", expanded=False):
+        fi = data.get("feature_importance", {})
+        if fi:
+            top3 = sorted(fi.items(), key=lambda x: x[1], reverse=True)[:3]
+            _detail_row("Top SHAP features", "")
+            for feat, val in top3:
+                st.markdown(f"- **{feat}** ({val:.4f})")
+        else:
+            st.caption("SHAP data available after live run.")
+            if features:
+                st.markdown("Top selected features:")
+                for f in features[:3]:
+                    st.markdown(f"- {f}")
+
+    # 7 — Validation
+    with exp_cols[6].expander("Details", expanded=False):
+        _detail_row("AUC",  f"{auc:.4f}"  if auc  else "—")
+        _detail_row("Gini", f"{gini:.4f}" if gini else "—")
+        _detail_row("KS",   f"{ks:.4f}"   if ks   else "—")
+        psi_r = data.get("psi_results", {})
+        _detail_row("PSI",  f"{psi_r.get('psi_score','—')} ({psi_r.get('assessment','—')})")
+        _detail_row("Status", "PASS ✓" if passed else "FAIL ✗")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
