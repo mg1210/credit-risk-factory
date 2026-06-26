@@ -74,6 +74,11 @@ class CreditRiskOrchestrator:
         ]
 
         for i, (phase_name, agent) in enumerate(phases):
+            # Checkpoint 3 must be set BEFORE ValidationAgent runs so
+            # _save_audit() captures the approved flag in the JSON output
+            if i == 6 and self.auto_approve:
+                state.checkpoint_3_approved = True
+
             self._phase_header(phase_name)
             state = agent.execute(state)
 
@@ -90,8 +95,9 @@ class CreditRiskOrchestrator:
                     self._abort("Feature shortlist not approved.")
                     return state
 
-            if i == 6:   # After Validation
-                state = self._checkpoint_3(state)
+            if i == 6:   # After Validation — interactive mode still needs the prompt
+                if not self.auto_approve:
+                    state = self._checkpoint_3(state)
 
             # Halt on critical error
             if state.errors:
