@@ -23,8 +23,9 @@ data/*.parquet
 outputs/*.pkl
 outputs/*.joblib
 
-# Streamlit secrets (never commit real keys)
+# API keys — never commit
 .streamlit/secrets.toml
+api_key.txt
 
 # OS
 .DS_Store

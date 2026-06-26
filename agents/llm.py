@@ -15,21 +15,45 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        # Also check Streamlit secrets when running in Streamlit Cloud
+        api_key = ""
+
+        # 1) Environment variable
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+
+        # 2) Local api_key.txt in project root
+        if not api_key:
+            key_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "api_key.txt")
+            if os.path.exists(key_file):
+                with open(key_file, encoding="utf-8") as f:
+                    api_key = f.read().strip()
+
+        # 3) Streamlit secrets (Streamlit Cloud)
         if not api_key:
             try:
                 import streamlit as st
-                api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+                api_key = st.secrets.get("ANTHROPIC_API_KEY", "").strip()
             except Exception:
                 pass
+
+        if not api_key:
+            raise RuntimeError(
+                "No Anthropic API key found. Provide it via:\n"
+                "  1) ANTHROPIC_API_KEY environment variable\n"
+                "  2) api_key.txt file in the project root\n"
+                "  3) Streamlit secrets (ANTHROPIC_API_KEY)"
+            )
+
         _client = anthropic.Anthropic(api_key=api_key)
     return _client
 
 
 def ask(prompt: str, system: str = "", max_tokens: int = 1024) -> str:
-    """Send a prompt to Claude and return the text response."""
-    client = _get_client()
+    """Send a prompt to Claude and return the text response. Returns '' if no API key."""
+    try:
+        client = _get_client()
+    except RuntimeError as e:
+        print(f"  LLM skipped — {e.args[0].splitlines()[0]}")
+        return ""
     messages = [{"role": "user", "content": prompt}]
     kwargs = dict(
         model="claude-sonnet-4-6",
