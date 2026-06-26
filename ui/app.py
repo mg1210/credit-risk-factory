@@ -136,16 +136,6 @@ def show_results(data, audit_path, report_txt, rpt_path):
     card(c6, "Overfit Δ", ofit, "train−test AUC gap")
 
     st.markdown("<br>", unsafe_allow_html=True)
-
-    # Checkpoints
-    cc1, cc2, cc3 = st.columns(3)
-    for col, label, key in [
-        (cc1, "Checkpoint 1 — Target Definition", "target_confirmed"),
-        (cc2, "Checkpoint 2 — Feature Shortlist",  "features_approved"),
-        (cc3, "Checkpoint 3 — Model Sign-Off",     "model_signed_off"),
-    ]:
-        col.markdown(f"{'✅' if chk.get(key) else '❌'} **{label}**")
-
     st.markdown("---")
 
     # Tabs
