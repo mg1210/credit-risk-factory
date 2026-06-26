@@ -19,8 +19,9 @@ data/*.csv
 data/*.xlsx
 data/*.parquet
 
-# Outputs
-outputs/
+# Outputs — keep JSON/txt results, ignore large model artefacts
+outputs/*.pkl
+outputs/*.joblib
 
 # Streamlit secrets (never commit real keys)
 .streamlit/secrets.toml
