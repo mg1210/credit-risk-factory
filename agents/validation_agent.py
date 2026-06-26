@@ -309,7 +309,7 @@ Be direct and specific — this is for model governance sign-off.
 
         report_text = "\n".join(report)
         path = os.path.join(self.output_dir, f"{run_id}_model_report.txt")
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(report_text)
 
         state.model_report_path = path
@@ -320,7 +320,7 @@ Be direct and specific — this is for model governance sign-off.
     def _save_audit(self, state: PipelineState) -> PipelineState:
         path = os.path.join(self.output_dir, f"{state.run_id}_audit_trail.json")
         summary = state.to_summary_dict()
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2, default=str)
         self._info(f"Audit trail saved → {path}")
         return state

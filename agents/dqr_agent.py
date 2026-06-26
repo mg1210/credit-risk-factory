@@ -106,7 +106,8 @@ class DQRAgent(BaseAgent):
                 continue
             if df[col].dtype == object or str(df[col].dtype) == 'large_string':
                 continue
-            s = df[col].dropna()
+            s = pd.to_numeric(df[col], errors='coerce')
+            s = s.dropna()
             if len(s) < 10:
                 continue
             q1, q3  = s.quantile(0.25), s.quantile(0.75)
