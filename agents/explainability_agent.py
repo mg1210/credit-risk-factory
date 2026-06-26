@@ -88,7 +88,7 @@ class ExplainabilityAgent(BaseAgent):
             state.feature_importance = dict(
                 sorted(importance.items(), key=lambda x: -x[1])
             )
-            self._info(f"SHAP computed on {n} samples")
+            self._info(f"SHAP computed on {len(X_sample)} samples")
             self._info(f"Top 5 SHAP features: "
                        f"{list(state.feature_importance.keys())[:5]}")
         except Exception as e:
